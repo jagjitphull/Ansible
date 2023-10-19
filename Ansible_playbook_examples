@@ -1,0 +1,160 @@
+01) Ansible Nginx-playbook.yml
+################################################
+---
+- name: Install and Configure Nginx
+  hosts: web_servers
+  become: yes
+
+  vars:
+    server_hostname: example.com
+    web_page_content: "Hello, Ansible!"
+
+  tasks:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+      notify: Restart Nginx
+
+    - name: Create Nginx Configuration
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+      notify: Restart Nginx
+
+    - name: Create Web Page
+      copy:
+        content: "{{ web_page_content }}"
+        dest: /var/www/html/index.html
+
+  handlers:
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+
+**************************************
+Execute the Playbook
+
+ansible-playbook nginx_setup.yml
+
+*****************************************
+
+#####################################################
+
+02) Ansible vault-playbook.yml
+---
+- name: Ansible Vault Playbook Example
+  hosts: your_target_hosts
+  become: yes
+
+  vars_files:
+    - vault.yml
+
+  tasks:
+    - name: Ensure MySQL is installed
+      package:
+        name: mysql
+        state: present
+
+    - name: Configure MySQL using the vault variable
+      mysql_user:
+        name: your_username
+        password: "{{ db_password }}"
+        login_user: root
+        login_password: ""
+
+*****************************************************
+Execute the playbook
+
+ansible-playbook vault_playbook.yml --ask-vault-pass
+#######################################################
+
+03) Ansible Nginx 2nd playbook example
+
+Dir/project structure
+
+ansible-nginx-playbook/
+|-- playbook.yml
+|-- roles/
+|   |-- nginx/
+|       |-- tasks/
+|       |   |-- main.yml
+|       |-- templates/
+|       |   |-- nginx-site.conf.j2
+|       |-- handlers/
+|       |   |-- main.yml
+|-- templates/
+|   |-- index.html.j2
+
+
+a) playbook.yml
+---
+- name: Deploy and Configure Nginx
+  hosts: web_servers
+  become: yes
+  roles:
+    - nginx
+  tasks:
+    - name: Create index.html
+      template:
+        src: templates/index.html.j2
+        dest: /var/www/html/index.html
+      notify: Restart Nginx
+
+b) roles/nginx/tasks/main.yml
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+  notify: Restart Nginx
+
+- name: Deploy Nginx site configuration
+  template:
+    src: nginx-site.conf.j2
+    dest: /etc/nginx/sites-available/my-site
+    owner: root
+    group: root
+  notify: Restart Nginx
+
+- name: Enable Nginx site
+  command: ln -s /etc/nginx/sites-available/my-site /etc/nginx/sites-enabled/
+  notify: Restart Nginx
+
+ c) roles/nginx/templates/nginx-site.conf.j2
+ server {
+    listen 80;
+    server_name my-site.com;
+    root /var/www/html;
+
+    location / {
+        index index.html;
+    }
+}
+
+d) roles/nginx/handlers/main.yml
+---
+- name: Restart Nginx
+  service:
+    name: nginx
+    state: restarted
+
+e) templates/index.html.j2
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Nginx Website</title>
+</head>
+<body>
+    <h1>Welcome to my Nginx-powered website!</h1>
+</body>
+</html>
+
+**********************************************
+Execute the playbook.yml
+ 
+ansible-playbook playbook.yml -vvv
+
+###########################################################
+
